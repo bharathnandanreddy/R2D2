@@ -28,6 +28,8 @@ genai = ChatGoogleGenerativeAI(
     max_retries=2
 )
 
+DOCX_CHUNK_SIZE_CHARS = 2000 
+
 # ----- File download from GCS -----
 def download_file_from_gcs(bucket_name, blob_name, local_path):
     bucket = storage_client.bucket(bucket_name)
@@ -37,16 +39,38 @@ def download_file_from_gcs(bucket_name, blob_name, local_path):
 
 # ----- Load and chunk DOCX -----
 def load_and_chunk_docx_with_metadata(file_path, file_name):
+    """
+    Loads a DOCX file and chunks its content into page-like blocks
+    based on character count, adding metadata.
+    """
     doc = DocxDocument(file_path)
     docs = []
+    current_chunk_content = []
+    current_chunk_start_para_idx = 0
+    chunk_counter = 1
+    
     for i, para in enumerate(doc.paragraphs):
         text = para.text.strip()
         if text:
-            docs.append(Document(
-                page_content=text,
-                metadata={"source_file": file_name, "chunk_number": i+1}
-            ))
+            current_chunk_content.append(text)
+        
+        # Check if current chunk size exceeds limit or it's the last paragraph
+        # We join with a space to approximate the character count when sentences are concatenated
+        if len(" ".join(current_chunk_content)) >= DOCX_CHUNK_SIZE_CHARS or i == len(doc.paragraphs) - 1:
+            if current_chunk_content: # Ensure there's content to add a chunk
+                docs.append(Document(
+                    page_content=" ".join(current_chunk_content),
+                    metadata={
+                        "source_file": file_name,
+                        "chunk_type": "docx_paragraph_group",
+                        "chunk_number": chunk_counter 
+                    }
+                ))
+                current_chunk_content = [] # Reset for next chunk
+                current_chunk_start_para_idx = i + 1 # Start next chunk from next paragraph
+                chunk_counter += 1
     return docs
+    
 
 # ----- Load and chunk PDF -----
 def load_and_chunk_pdf_with_metadata(file_path, file_name):

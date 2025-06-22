@@ -41,10 +41,13 @@
 
   <!-- Main Content -->
   <div class="container mt-5">
+    <div class="container text-center">
     <h1 class="mb-4">🧠 R2D2 - Requirements Manager</h1>
-
-    <div id="loader" class="text-muted">⏳ Loading requirements...</div>
-
+    <div id="loader"  class="text-muted">
+      <img src="{{ url_for('static', filename='assets/NtTQ.gif') }}" alt="Loading..." width="80">
+      <p class="mt-2">⏳ Loading requirements...</p>
+    </div>
+    </div>
     <div class="table-responsive">
       <table id="reqTable" class="table table-bordered table-striped" style="display: none;">
         <thead class="table-dark">

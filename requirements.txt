@@ -11,3 +11,4 @@ python-docx
 langchain_google_genai
 google-generativeai
 flask
+python-docx
