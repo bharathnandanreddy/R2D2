@@ -1,0 +1,12 @@
+runtime: python311
+entrypoint: gunicorn -b :$PORT -t 600 run:app
+
+instance_class: F4_1G
+
+automatic_scaling:
+  target_cpu_utilization: 0.65
+  min_instances: 0
+  max_instances: 5
+
+env_variables:
+  FLASK_ENV: production

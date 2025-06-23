@@ -24,17 +24,15 @@
       margin-bottom: 20px;
     }
 
-    #loader {
-      display: none;
-      margin-top: 20px;
-      font-weight: bold;
-      color: #555;
-    }
-
     table th,
     table td {
       vertical-align: top;
       white-space: pre-wrap;
+    }
+
+    #loader {
+      display: none;
+      margin-top: 20px;
     }
   </style>
 </head>
@@ -57,8 +55,11 @@
     <button id="validateBtn" class="btn btn-outline-success" onclick="startValidation()">Run Validation</button>
 
     <div id="loader" class="mt-4">
-      <img src="{{ url_for('static', filename='assets/NtTQ.gif') }}" alt="Loading..." width="80">
-      <p class="mt-2">⏳ Validating... Please wait.</p>
+      <div id="loadingContent">
+        <img src="{{ url_for('static', filename='assets/NtTQ.gif') }}" alt="Loading..." width="80">
+        <p class="mt-2">⏳ Validating... Please wait.</p>
+      </div>
+      <div id="errorMsg" class="text-danger mt-2" style="display: none;"></div>
     </div>
 
     <div class="table-responsive mt-4">
@@ -87,42 +88,68 @@
   <script>
     function startValidation() {
       const btn = document.getElementById("validateBtn");
-      btn.disabled = true;
-      document.getElementById("loader").style.display = "block";
-      document.getElementById("resultsTable").style.display = "none";
+      const loader = document.getElementById("loader");
+      const loadingContent = document.getElementById("loadingContent");
+      const errorDiv = document.getElementById("errorMsg");
+      const resultsTable = document.getElementById("resultsTable");
+      const tbody = document.querySelector("#resultsTable tbody");
 
+      // Reset UI
+      btn.disabled = true;
+      loader.style.display = "block";
+      loadingContent.style.display = "block";
+      errorDiv.style.display = "none";
+      errorDiv.innerHTML = "";
+      resultsTable.style.display = "none";
+      tbody.innerHTML = "";
+
+      // Call API
       fetch("/api/validate", { method: "POST" })
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) {
+            throw new Error(`Validation API returned ${res.status}`);
+          }
+          return res.json();
+        })
         .then(data => {
-          const tbody = document.querySelector("#resultsTable tbody");
-          tbody.innerHTML = "";
+          if (!Array.isArray(data) || data.length === 0) {
+            throw new Error("No validation results returned.");
+          }
+
           data.forEach(item => {
             const row = document.createElement("tr");
             row.innerHTML = `
               <td>${item.requirement_id || 'N/A'}</td>
-              <td>${item.requirement}</td>
-              <td>${item.requirement_type}</td>
-              <td><strong>${item.status}</strong></td>
-              <td>${item.evidence_summary}</td>
-              <td>${item.recommendation}</td>
+              <td>${item.requirement || 'N/A'}</td>
+              <td>${item.requirement_type || 'N/A'}</td>
+              <td><strong>${item.status || 'Unknown'}</strong></td>
+              <td>${item.evidence_summary || 'No summary'}</td>
+              <td>${item.recommendation || 'No recommendation'}</td>
             `;
             tbody.appendChild(row);
           });
-          
-          document.getElementById("loader").style.display = "none";
-          document.getElementById("resultsTable").style.display = "table";
 
-          // Initialize or re-initialize DataTable
+          loader.style.display = "none";
+          resultsTable.style.display = "table";
+
+          // (Re)init DataTable
           if ($.fn.DataTable.isDataTable('#resultsTable')) {
             $('#resultsTable').DataTable().destroy();
           }
           $('#resultsTable').DataTable({
             pageLength: 10,
             lengthMenu: [5, 10, 25, 50, 100],
-            order: [[2, 'asc']], // Default sort by "Status"
+            order: [[2, 'asc']],
             autoWidth: false
           });
-
+        })
+        .catch(error => {
+          loadingContent.style.display = "none";
+          errorDiv.innerHTML = `❌ Error during validation: ${error.message}<br>Please try again later.`;
+          errorDiv.style.display = "block";
+          console.error("Validation error:", error);
+        })
+        .finally(() => {
           btn.disabled = false;
         });
     }

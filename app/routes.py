@@ -2,6 +2,10 @@ from flask import Blueprint, render_template, request, redirect, url_for, jsonif
 from app.services import requirement_store
 from app.services.process_design import process_design
 import google.cloud.storage as storage
+from google.cloud import bigquery
+import requests
+from datetime import datetime
+
 main = Blueprint("main", __name__)
 
 PROJECT_ID = "hacker2025-team-97-dev" 
@@ -59,12 +63,39 @@ def validate_page():
 
 @main.route("/api/validate", methods=["POST"])
 def validate_api():
-    requirements = requirement_store.get_requirements()
-    validation_results = process_design(requirements)
+    requirements = requirement_store.get_requirements()  # Your local source
+    if not requirements:
+        return jsonify({"error": "No requirements to validate"}), 400
+
+    # 1. Save requirements to BigQuery
+    bq_client = bigquery.Client()
+    table_id = "hacker2025-team-97-dev.requirements.extracted"
     
-    # Optional: combine back with IDs
-    # for idx, result in enumerate(validation_results):
-    #     result["requirement_id"] = requirements[idx]["requirement_id"]
+    for req in requirements:
+        req["timestamp"] = datetime.utcnow().isoformat()  # optional
+
+    job_config = bigquery.LoadJobConfig(
+        write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE
+    )
+    load_job = bq_client.load_table_from_json(requirements, table_id, job_config=job_config)
+    load_job.result()
+
+    print(f"Table {table_id} overwritten with {len(requirements)} rows")
+
+
+    # 2. Call your Cloud Run validation endpoint
+    VALIDATION_ENDPOINT = "https://validate-function-962417283534.europe-west1.run.app"  # Replace with actual Cloud Run URL
+    try:
+        print("calling validation endpoint")
+        response = requests.post(VALIDATION_ENDPOINT , timeout=600)
+        print("response received")
+        response.raise_for_status()
+        validation_results = response.json()
+    except Exception as e:
+        print(f"Error calling validation endpoint: {e}")
+        return jsonify({"error": str(e)}), 500
+
+    # 3. Return results to frontend
     return jsonify(validation_results)
 
 @main.route("/docs", methods=["GET"])
