@@ -5,6 +5,10 @@ import google.cloud.storage as storage
 from google.cloud import bigquery
 import requests
 from datetime import datetime
+import csv
+import io
+from flask import Response
+
 
 main = Blueprint("main", __name__)
 
@@ -138,3 +142,47 @@ def delete_doc():
     blob.delete()
     requirement_store.clear_requirements()
     return jsonify({"message": "Deleted successfully"}), 200
+
+
+@main.route("/api/validation_report_csv", methods=["GET"])
+def get_latest_validation_report_csv():
+    bq_client = bigquery.Client()
+    table_id = "hacker2025-team-97-dev.requirements.validation_report"
+
+    query = f"""
+      SELECT requirement_id, requirement, requirement_type, status, evidence_summary, recommendation, timestamp
+      FROM `{table_id}`
+      ORDER BY timestamp DESC
+      LIMIT 100
+    """
+
+    try:
+        query_job = bq_client.query(query)
+        rows = list(query_job)
+
+        # Create CSV in-memory
+        output = io.StringIO()
+        writer = csv.writer(output)
+        # Write header
+        writer.writerow(["requirement_id", "requirement", "requirement_type", "status", "evidence_summary", "recommendation", "timestamp"])
+        # Write data rows
+        for row in rows:
+            writer.writerow([
+                row.get("requirement_id", ""),
+                row.get("requirement", ""),
+                row.get("requirement_type", ""),
+                row.get("status", ""),
+                row.get("evidence_summary", ""),
+                row.get("recommendation", ""),
+                row.get("timestamp", "")
+            ])
+
+        output.seek(0)
+        return Response(
+            output,
+            mimetype="text/csv",
+            headers={"Content-Disposition": f"attachment; filename=validation_report_{datetime.utcnow().strftime('%Y-%m-%d-%H-%M-%S')}.csv"}
+        )
+
+    except Exception as e:
+        return jsonify({"error": f"Failed to fetch report: {e}"}), 500

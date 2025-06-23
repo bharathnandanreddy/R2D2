@@ -50,10 +50,15 @@
 
   <!-- Main Content -->
   <div class="container text-center">
-    <h1>🚀 R2D2 – Validation Report</h1>
-
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h1 class="w-100 text-center">🚀 R2D2 – Validation Report</h1>
+      <button id="downloadCsvBtn" class="btn btn-outline-primary ms-auto position-absolute end-0 me-4" onclick="downloadCSVReport()">
+        📥 Download Latest Report
+      </button>
+    </div>
     <button id="validateBtn" class="btn btn-outline-success" onclick="startValidation()">Run Validation</button>
 
+  
     <div id="loader" class="mt-4">
       <div id="loadingContent">
         <img src="{{ url_for('static', filename='assets/NtTQ.gif') }}" alt="Loading..." width="80">
@@ -153,6 +158,28 @@
           btn.disabled = false;
         });
     }
+
+    function downloadCSVReport() {
+  fetch("/api/validation_report_csv")
+    .then(res => {
+      if (!res.ok) throw new Error(`Failed to fetch CSV: ${res.status}`);
+      return res.blob();
+    })
+    .then(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `validation_report_${new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    })
+    .catch(err => {
+      alert(`Error downloading CSV report: ${err.message}`);
+      console.error(err);
+    });
+}
   </script>
 
 </body>
