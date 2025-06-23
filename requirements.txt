@@ -1,4 +1,3 @@
-langchain-google-vertexai
 langchain
 pypdf
 PyPDF2

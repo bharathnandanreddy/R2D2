@@ -25,7 +25,8 @@ genai = ChatGoogleGenerativeAI(
     temperature=0,
     max_tokens=None,
     timeout=None,
-    max_retries=2
+    max_retries=2,
+    google_api_key="AIzaSyDG8Azu4oGygUqs2-A_QECBDKIH9fSWkdg"
 )
 
 DOCX_CHUNK_SIZE_CHARS = 2000 

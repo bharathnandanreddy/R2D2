@@ -7,6 +7,8 @@ import re
 
 PROJECT_ID = "hacker2025-team-97-dev"
 
+genai.configure(api_key="AIzaSyDG8Azu4oGygUqs2-A_QECBDKIH9fSWkdg")
+
 # Model for PDF validation (requires multimodal capabilities)
 pdf_validation_model = genai.GenerativeModel("gemini-1.5-pro")
 
